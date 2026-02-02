@@ -4,6 +4,7 @@ import AboutSection from './components/AboutSection.vue'
 import ContactSection from './components/ContactSection.vue'
 import NavBar from './components/NavBar.vue'
 import AlbumsSection from './components/AlbumsSection.vue'
+import CannonSection from './components/CannonSection.vue'
 </script>
 
 <template>
@@ -12,6 +13,7 @@ import AlbumsSection from './components/AlbumsSection.vue'
   <AlbumsSection />
   <AboutSection />
   <ContactSection />
+  <CannonSection />
 </template>
 
 <style scoped>
