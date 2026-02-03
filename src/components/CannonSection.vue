@@ -9,11 +9,11 @@ import { cars } from '../config/cars.js';
 import { albums } from '../config/albums.js';
 import LoadingScreen from './ui/LoadingScreen.vue';
 import AlbumModal from './ui/AlbumModal.vue';
+import CameraOverlay from './ui/CameraOverlay.vue';
+import BackgroundLayer from './ui/BackgroundLayer.vue';
 
 const canvasRef = ref(null);
 const containerRef = ref(null);
-const overlayRef = ref(null);
-const backgroundRef = ref(null);
 const stickyWrapperRef = ref(null);
 let animationId = null;
 let scene, camera, renderer, model;
@@ -364,30 +364,6 @@ const onScroll = () => {
     
     // Store for RAF
     currentScrollP.value = scrollP;
-    
-    // Update DOM elements (overlay, etc) in scroll handler is fine as they are separate layer, 
-    // but ideally could also be in RAF if position dependent.
-    // Opacity changes are cheap.
-    if(overlayRef.value) {
-         overlayRef.value.style.opacity = scrollP > 0.8 ? (scrollP - 0.8) * 5 : 0;
-    }
-    
-    // Update background color (White to Black) - DOM style update
-    if (backgroundRef.value) {
-         const val = Math.floor(255 * (1 - scrollP));
-         backgroundRef.value.style.backgroundColor = `rgb(${val}, ${val}, ${val})`;
-         
-         // Fade out text at the end
-         const textEl = backgroundRef.value.querySelector('.cursive-bg-text');
-         if (textEl) {
-             if (scrollP > 0.7) {
-                 const fadeOp = Math.max(0, 1 - ((scrollP - 0.7) / 0.25));
-                 textEl.style.opacity = fadeOp * 0.8;
-             } else {
-                 textEl.style.opacity = 0.8;
-             }
-         }
-    }
 };
 
 const animate = () => {
@@ -576,24 +552,14 @@ onBeforeUnmount(() => {
     <AlbumModal v-if="showAlbum" :album="selectedAlbum" @close="showAlbum = false" />
   
     <div ref="stickyWrapperRef" class="sticky-wrapper">
-        <div ref="backgroundRef" class="background-layer">
-            <h1 class="cursive-bg-text">Lucca Nunes</h1>
-        </div>
+        <BackgroundLayer :scroll-progress="currentScrollP" />
         <canvas ref="canvasRef" class="webgl-canvas"></canvas>
-        <div ref="overlayRef" class="viewfinder-overlay">
-            <div class="ocr-text top-left">REC</div>
-            <div class="ocr-text top-right">BAT 100%</div>
-            <!-- Focus box removed -->
-            <div class="ocr-text bottom-left">ISO 800</div>
-            <div class="ocr-text bottom-right">1/60 F2.8</div>
-        </div>
+        <CameraOverlay :scroll-progress="currentScrollP" />
     </div>
   </section>
 </template>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Mrs+Saint+Delafield&display=swap');
-
 .cannon-section {
   position: relative;
   width: 100%;
@@ -611,36 +577,6 @@ onBeforeUnmount(() => {
     background-color: #ffffff; 
 }
 
-.background-layer {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 0; /* Behind canvas */
-    background-color: white; /* Start White */
-}
-
-.cursive-bg-text {
-    font-family: 'Mrs Saint Delafield', cursive;
-    font-size: 22rem; /* Very large */
-    color: #b91004ff; /* Gold */
-    margin: 0;
-    opacity: 0.8;
-    pointer-events: none;
-    text-align: center;
-    line-height: 1;
-}
-
-@media (max-width: 768px) {
-    .cursive-bg-text {
-        font-size: 12rem; /* Larger for mobile */
-    }
-}
-
 .webgl-canvas {
   position: relative;
   width: 100%;
@@ -648,45 +584,4 @@ onBeforeUnmount(() => {
   display: block;
   z-index: 10;
 }
-
-.viewfinder-overlay {
-    position: absolute;
-    top: 0; 
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    opacity: 0; /* Starts hidden */
-    transition: opacity 0.1s linear;
-    z-index: 20;
-    border: 20px solid rgba(0,0,0,0.8); /* Simulated bezel maybe? Or just overlay */
-}
-
-/* Viewfinder UI Elements REMOVED focus box */
-
-.ocr-text {
-    position: absolute;
-    color: white;
-    font-family: 'Courier New', Courier, monospace;
-    font-weight: bold;
-    font-size: 1.2rem;
-    text-shadow: 0 0 5px black;
-    padding: 30px;
-}
-
-.top-left { top: 0; left: 0; color: red; animation: blink 1s infinite; }
-.top-right { top: 0; right: 0; }
-.bottom-left { bottom: 0; left: 0; }
-.bottom-right { bottom: 0; right: 0; }
-
-@keyframes blink {
-    50% { opacity: 0; }
-}
-
-
-
-/* Loading styles moved to LoadingScreen.vue */
-
-
-
 </style>
