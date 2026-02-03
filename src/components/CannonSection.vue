@@ -6,7 +6,9 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 
 import { cars } from '../config/cars.js';
+import { albums } from '../config/albums.js';
 import LoadingScreen from './ui/LoadingScreen.vue';
+import AlbumModal from './ui/AlbumModal.vue';
 
 const canvasRef = ref(null);
 const containerRef = ref(null);
@@ -23,12 +25,26 @@ let isAnimating = false;
 // Loading State
 const isLoading = ref(true);
 const loadingProgress = ref(0);
+const currentScrollP = ref(0); // For RAF sync
+
+// Mobile detection
+const isMobile = window.innerWidth < 768;
+
+// Album State
+const showAlbum = ref(false);
+const selectedAlbum = ref(null);
 
 // Grid of Cars (using imported config)
 // gridModels array tracks the scene objects
 const gridModels = [];
 const gridGroup = new THREE.Group();
 gridGroup.visible = false; // Hidden initially
+const interactionPlanes = []; // Planes for hover detection
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+
+// Touch State
+let touchStartData = { x: 0, y: 0, time: 0 };
 
 // Initialize Three.js
 const init = () => {
@@ -54,8 +70,8 @@ const init = () => {
     alpha: true
   });
   renderer.setSize(width, height);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.shadowMap.enabled = true;
+  renderer.setPixelRatio(isMobile ? 1 : Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = !isMobile;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
 
@@ -178,6 +194,10 @@ const init = () => {
   
   // Handle Scroll
     window.addEventListener('scroll', onScroll);
+    window.addEventListener('mousemove', onPointerMove);
+    window.addEventListener('click', onCanvasClick);
+    window.addEventListener('touchstart', onTouchStart, { passive: false }); // Passive false if we want to preventDefault, but we likely won't
+    window.addEventListener('touchend', onTouchEnd);
 };
 
 // Store grid objects for responsive updates
@@ -237,6 +257,22 @@ const loadGrid = (loader) => {
              
              frame.scale.set(1.5, 1, 1); // Aspect ratio
              pivot.add(frame);
+
+             // Interaction Plane (Hover Background)
+             const planeGeo = new THREE.PlaneGeometry(frameSize, frameSize);
+             const planeMat = new THREE.MeshBasicMaterial({ 
+                 color: 0xffffff, 
+                 side: THREE.DoubleSide, 
+                 transparent: true, 
+                 opacity: 0 // Start invisible
+             });
+             const plane = new THREE.Mesh(planeGeo, planeMat);
+             plane.position.z = -0.01; // Match frame depth roughly
+             plane.scale.set(1.5, 1, 1); // Match frame aspect ratio
+             plane.userData = { isHoverPlane: true, parentPivot: pivot };
+             pivot.add(plane);
+             interactionPlanes.push(plane);
+
              
              // Add Text Label
              const sprite = createTextSprite(carDef.name);
@@ -317,55 +353,38 @@ const startAnimation = () => {
 };
 
 const onScroll = () => {
-    if (!containerRef.value || !camera) return;
+    if (!containerRef.value) return;
     
-    if (isAnimating) return;
-    
+    // Calculate raw scroll progress
     const rect = containerRef.value.getBoundingClientRect();
     const viewportHeight = window.innerHeight;
     
     let scrollP = -rect.top / (rect.height - viewportHeight);
     scrollP = Math.max(0, Math.min(1, scrollP));
     
-    if (!isAnimating) {
-         // Scroll moves from 'targetCameraPos' (0.8) to 'insidePos' (0.1)
-         const startZ = 0.8;
-         const endZ = 0.15;
+    // Store for RAF
+    currentScrollP.value = scrollP;
+    
+    // Update DOM elements (overlay, etc) in scroll handler is fine as they are separate layer, 
+    // but ideally could also be in RAF if position dependent.
+    // Opacity changes are cheap.
+    if(overlayRef.value) {
+         overlayRef.value.style.opacity = scrollP > 0.8 ? (scrollP - 0.8) * 5 : 0;
+    }
+    
+    // Update background color (White to Black) - DOM style update
+    if (backgroundRef.value) {
+         const val = Math.floor(255 * (1 - scrollP));
+         backgroundRef.value.style.backgroundColor = `rgb(${val}, ${val}, ${val})`;
          
-         const currentZ = startZ - (scrollP * (startZ - endZ));
-         camera.position.z = currentZ;
-         
-         // Update overlay opacity
-         if(overlayRef.value) {
-             overlayRef.value.style.opacity = scrollP > 0.8 ? (scrollP - 0.8) * 5 : 0;
-         }
-
-         // Rotate model inversely to scroll to reveal the back
-         if (model) {
-             model.rotation.y = scrollP * Math.PI; 
-             // Hide model at the very end to simulate looking "through" it
-             const switchThreshold = 0.90;
-             model.visible = scrollP < switchThreshold;
-             
-             // Show Grid only at the end
-             gridGroup.visible = scrollP >= switchThreshold;
-         }
-
-         // Update background color (White to Black)
-         if (backgroundRef.value) {
-             const val = Math.floor(255 * (1 - scrollP));
-             backgroundRef.value.style.backgroundColor = `rgb(${val}, ${val}, ${val})`;
-             
-             // Fade out text at the end
-             const textEl = backgroundRef.value.querySelector('.cursive-bg-text');
-             if (textEl) {
-                 if (scrollP > 0.7) {
-                     // Fade from 1 down to 0 between 0.7 and 0.95
-                     const fadeOp = Math.max(0, 1 - ((scrollP - 0.7) / 0.25));
-                     textEl.style.opacity = fadeOp * 0.8; // Multiply by base opacity
-                 } else {
-                     textEl.style.opacity = 0.8;
-                 }
+         // Fade out text at the end
+         const textEl = backgroundRef.value.querySelector('.cursive-bg-text');
+         if (textEl) {
+             if (scrollP > 0.7) {
+                 const fadeOp = Math.max(0, 1 - ((scrollP - 0.7) / 0.25));
+                 textEl.style.opacity = fadeOp * 0.8;
+             } else {
+                 textEl.style.opacity = 0.8;
              }
          }
     }
@@ -387,10 +406,49 @@ const animate = () => {
       // Interpolate position
       camera.position.lerpVectors(startCameraPos, targetCameraPos, t);
       camera.lookAt(0, 0, 0); // Keep looking at target
+  } else {
+      // Scroll controlled animation
+      const scrollP = currentScrollP.value;
+      const startZ = 0.8;
+      const endZ = 0.15;
+      
+      const currentZ = startZ - (scrollP * (startZ - endZ));
+      if (camera) camera.position.z = currentZ;
+      
+      // Scene updates synced with RAF
+      if (model) {
+          model.rotation.y = scrollP * Math.PI; 
+          
+          const switchThreshold = 0.90;
+          model.visible = scrollP < switchThreshold;
+          
+          gridGroup.visible = scrollP >= switchThreshold;
+      }
   }
 
   // Slight rotation of model for dynamism REMOVED
   
+  // Hover Logic
+  if (gridGroup.visible) {
+      raycaster.setFromCamera(pointer, camera);
+      const intersects = raycaster.intersectObjects(interactionPlanes);
+      
+      // Determine hovered plane
+      let hoveredPlane = null;
+      if (intersects.length > 0) {
+          hoveredPlane = intersects[0].object;
+      }
+      
+      // Update Opacities
+      interactionPlanes.forEach(plane => {
+          const targetOpacity = (plane === hoveredPlane) ? 0.6 : 0.0; // 0.6 visible white
+          plane.material.opacity += (targetOpacity - plane.material.opacity) * 0.1;
+      });
+      
+      // Cursor pointer
+      document.body.style.cursor = hoveredPlane ? 'pointer' : 'auto';
+  }
+
   // Rotate Grid Models
   if (gridGroup.visible) {
       gridModels.forEach(pivot => {
@@ -402,7 +460,69 @@ const animate = () => {
   }
 
 
+
+
   renderer.render(scene, camera);
+};
+
+const onPointerMove = (event) => {
+    pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+    pointer.y = - (event.clientY / window.innerHeight) * 2 + 1;
+};
+
+const checkIntersection = (clientX, clientY) => {
+    if (!gridGroup.visible) return;
+    if (showAlbum.value) return; // Don't check if album is open
+
+    pointer.x = (clientX / window.innerWidth) * 2 - 1;
+    pointer.y = - (clientY / window.innerHeight) * 2 + 1;
+    
+    raycaster.setFromCamera(pointer, camera);
+    const intersects = raycaster.intersectObjects(interactionPlanes);
+    
+    if (intersects.length > 0) {
+        const hoveredPlane = intersects[0].object;
+        if (hoveredPlane.userData.parentPivot) {
+            const index = hoveredPlane.userData.parentPivot.userData.index;
+            const carDef = cars[index];
+            if (carDef && carDef.albumId) {
+                const album = albums.find(a => a.id === carDef.albumId);
+                if (album) {
+                    selectedAlbum.value = album;
+                    showAlbum.value = true;
+                }
+            }
+        }
+    }
+};
+
+const onCanvasClick = (event) => {
+    // Determine if it was a mouse click (detail is 1 usually, or pointerType)
+    // We let touchEnd handle mobile taps to avoid 300ms delay and ghost clicks issues
+    // However, sometimes firing both is fine if we check state.
+    checkIntersection(event.clientX, event.clientY);
+};
+
+const onTouchStart = (e) => {
+    if (e.touches.length === 1) {
+        touchStartData.x = e.touches[0].clientX;
+        touchStartData.y = e.touches[0].clientY;
+        touchStartData.time = Date.now();
+    }
+};
+
+const onTouchEnd = (e) => {
+    if (e.changedTouches.length > 0) {
+        const t = e.changedTouches[0];
+        const dx = t.clientX - touchStartData.x;
+        const dy = t.clientY - touchStartData.y;
+        const dt = Date.now() - touchStartData.time;
+        
+        // Tap threshold: < 10px movement, < 300ms duration
+        if (Math.abs(dx) < 10 && Math.abs(dy) < 10 && dt < 300) {
+             checkIntersection(t.clientX, t.clientY);
+        }
+    }
 };
 
 const onResize = () => {
@@ -436,6 +556,12 @@ onMounted(() => {
 onBeforeUnmount(() => {
   cancelAnimationFrame(animationId);
   window.removeEventListener('resize', onResize);
+  window.removeEventListener('mousemove', onPointerMove);
+  window.removeEventListener('resize', onResize);
+  window.removeEventListener('mousemove', onPointerMove);
+  window.removeEventListener('click', onCanvasClick);
+  window.removeEventListener('touchstart', onTouchStart);
+  window.removeEventListener('touchend', onTouchEnd);
   if (renderer) renderer.dispose();
 });
 
@@ -445,6 +571,9 @@ onBeforeUnmount(() => {
   <section ref="containerRef" class="cannon-section">
     <!-- Loading Overlay Logic-->
     <LoadingScreen :is-loading="isLoading" :progress="loadingProgress" />
+    
+    <!-- Album Modal -->
+    <AlbumModal v-if="showAlbum" :album="selectedAlbum" @close="showAlbum = false" />
   
     <div ref="stickyWrapperRef" class="sticky-wrapper">
         <div ref="backgroundRef" class="background-layer">
@@ -497,13 +626,19 @@ onBeforeUnmount(() => {
 
 .cursive-bg-text {
     font-family: 'Mrs Saint Delafield', cursive;
-    font-size: 15rem; /* Very large */
+    font-size: 22rem; /* Very large */
     color: #b91004ff; /* Gold */
     margin: 0;
     opacity: 0.8;
     pointer-events: none;
     text-align: center;
     line-height: 1;
+}
+
+@media (max-width: 768px) {
+    .cursive-bg-text {
+        font-size: 12rem; /* Larger for mobile */
+    }
 }
 
 .webgl-canvas {
