@@ -57,7 +57,6 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Mrs+Saint+Delafield&display=swap');
 
 .album-modal {
   position: fixed;
@@ -96,8 +95,6 @@ onUnmounted(() => {
   font-family: 'Courier New', Courier, monospace;
 }
 
-
-
 .nav-arrow {
   display: none; /* Hidden on Desktop */
   position: absolute;
@@ -123,7 +120,7 @@ onUnmounted(() => {
 .nav-arrow.right { right: 0; }
 
 .album-title {
-  font-family: 'Mrs Saint Delafield', cursive;
+  font-family: 'Barriecito', cursive;
   color: #D4AF37; /* Gold */
   font-size: 4rem;
   text-align: center;

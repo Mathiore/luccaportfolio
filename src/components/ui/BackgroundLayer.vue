@@ -6,6 +6,10 @@ const props = defineProps({
     type: Number,
     required: true,
     default: 0
+  },
+  isLoading: {
+    type: Boolean,
+    default: false
   }
 });
 
@@ -28,12 +32,28 @@ const textStyle = computed(() => {
 
 <template>
   <div class="background-layer" :style="backgroundStyle">
-    <h1 class="cursive-bg-text" :style="textStyle">Lucca Nunes</h1>
+    <img src="/models/lucca.png" class="profile-bg" :style="textStyle" alt="" />
+    <div class="text-wrapper" :style="textStyle">
+        <h1 class="cursive-bg-text">Lucca Nunes</h1>    
+    </div>
   </div>
 </template>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Mrs+Saint+Delafield&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Barriecito&family=Pirata+One&display=swap');
+
+.profile-bg {
+    position: absolute;
+    bottom: -23vh;
+    left: 50%;
+    transform: translateX(-50%);
+    height: 85vh; /* Large height to stand behind camera */
+    max-width: 90vw;
+    object-fit: contain;
+    pointer-events: none;
+    z-index: -1; /* Ensure it is behind text if overlap */
+    /* Opacity controlled by inline style binding */
+}
 
 .background-layer {
     position: absolute;
@@ -43,17 +63,25 @@ const textStyle = computed(() => {
     height: 100%;
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start;
+    padding-top: 5vh;
     z-index: 0; /* Behind canvas */
     background-color: white; /* Start White */
 }
 
+.text-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    pointer-events: none;
+    transition: opacity 0.1s linear;
+}
+
 .cursive-bg-text {
-    font-family: 'Mrs Saint Delafield', cursive;
+    font-family: 'Pirata One', cursive;
     font-size: 22rem; /* Very large */
-    color: #b91004ff; /* Gold */
+    color: #d10000ff;
     margin: 0;
-    opacity: 0.8;
     pointer-events: none;
     text-align: center;
     line-height: 1;
@@ -61,7 +89,10 @@ const textStyle = computed(() => {
 
 @media (max-width: 768px) {
     .cursive-bg-text {
-        font-size: 12rem; /* Larger for mobile */
+        font-size: 10rem; /* Smaller for mobile to fit */
+    }
+    .subtitle-text {
+        font-size: 3rem;
     }
 }
 </style>

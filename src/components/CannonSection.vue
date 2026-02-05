@@ -552,7 +552,7 @@ onBeforeUnmount(() => {
     <AlbumModal v-if="showAlbum" :album="selectedAlbum" @close="showAlbum = false" />
   
     <div ref="stickyWrapperRef" class="sticky-wrapper">
-        <BackgroundLayer :scroll-progress="currentScrollP" />
+        <BackgroundLayer :scroll-progress="currentScrollP" :is-loading="isLoading" />
         <canvas ref="canvasRef" class="webgl-canvas"></canvas>
         <CameraOverlay :scroll-progress="currentScrollP" />
     </div>
