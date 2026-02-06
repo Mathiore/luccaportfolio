@@ -37,7 +37,7 @@ const selectedAlbum = ref(null);
 
 const isMenuVisible = ref(false); // Controls 2D Menu visibility
 
-// Grid of Cars Removed (User Request)
+// Grid of Cars Removed
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 
@@ -146,29 +146,40 @@ const init = () => {
     const center = box.getCenter(new THREE.Vector3());
     model.position.sub(center); // Center at 0,0,0
     
+    // Manual visual offset to lift the camera up
+    model.position.y += 0.06;
+    
     // Scale fitting
     // Adjust scale if needed based on model size
-    // Cannon might be huge or small, let's guess a reasonable scale or normalize it
     const size = box.getSize(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z);
-    if (maxDim > 5) {
-        const scale = 3 / maxDim;
-        model.scale.set(scale, scale, scale);
+    
+    const targetSize = 0.13; 
+    let scale = 0.4;
+    if (maxDim > 0) {
+        scale = targetSize / maxDim;
     }
+    model.scale.set(scale, scale, scale);
 
     model.traverse((child) => {
       if (child.isMesh) {
         child.castShadow = true;
         child.receiveShadow = true;
         
-        // Fix transparency issues
         if (child.material) {
             child.material.side = THREE.DoubleSide;
             child.material.format = THREE.RGBAFormat;
             child.material.depthWrite = true;
+            
+            child.material.color.setHex(0x333333); 
+            child.material.roughness = 0.5;
+            child.material.metalness = 0.7;
         }
       }
     });
+
+    // Set initial rotation to face front (180 deg)
+    model.rotation.y = Math.PI;
 
     scene.add(model);
     
@@ -232,6 +243,9 @@ const animate = () => {
       // Interpolate position
       camera.position.lerpVectors(startCameraPos, targetCameraPos, t);
       camera.lookAt(0, 0, 0); // Keep looking at target
+      
+      // Ensure model is facing correctly during animation
+      if (model) model.rotation.y = Math.PI;
   } else {
       // Scroll controlled animation
       const scrollP = currentScrollP.value;
@@ -243,7 +257,8 @@ const animate = () => {
       
       // Scene updates synced with RAF
       if (model) {
-          model.rotation.y = scrollP * Math.PI; 
+          // Offsetting rotation by PI (180 deg) because the model is naturally backwards
+          model.rotation.y = Math.PI + (scrollP * Math.PI); 
           
           const switchThreshold = 0.90;
           model.visible = scrollP < switchThreshold;
@@ -384,8 +399,8 @@ onBeforeUnmount(() => {
     width: 100%;
     height: 100vh;
     overflow: hidden;
-    /* Default background white if logic hasn't run yet */
-    background-color: #ffffff; 
+    /* Default background black to match section */
+    background-color: #000000; 
 }
 
 .webgl-canvas {

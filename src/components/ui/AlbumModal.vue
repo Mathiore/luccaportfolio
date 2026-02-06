@@ -235,9 +235,6 @@ onUnmounted(() => {
     .photo-frame {
         padding: 10px;
         box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        /* Maintain square aspect ratio or adapt? User said "visualizacao do album em carrossel" 
-           but previously "fotos alinhadas com contorno quadrado". 
-           Let's keep aspect-ratio 1/1 for the frame to be consistent. */
         aspect-ratio: 1/1; 
     }
     

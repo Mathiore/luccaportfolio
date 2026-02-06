@@ -14,26 +14,68 @@ const props = defineProps({
 });
 
 const backgroundStyle = computed(() => {
-  const val = Math.floor(255 * (1 - props.scrollProgress));
+  
+  let opacity = 1;
+  const startFade = 0.8; // Start fading heavily at the end
+  
+  if (props.scrollProgress > startFade) {
+      opacity = Math.max(0, 1 - ((props.scrollProgress - startFade) / (1 - startFade)));
+  }
+
   return {
-    backgroundColor: `rgb(${val}, ${val}, ${val})`
+    backgroundColor: 'white',
+    opacity: opacity
   };
 });
 
 const textStyle = computed(() => {
-  let opacity = 0.8;
-  if (props.scrollProgress > 0.7) {
-      const fadeOp = Math.max(0, 1 - ((props.scrollProgress - 0.7) / 0.25));
-      opacity = fadeOp * 0.8;
-  }
-  return { opacity };
+  // No longer needed to manage opacity separately, handled by parent
+  return {};
 });
 </script>
 
 <template>
   <div class="background-layer" :style="backgroundStyle">
     <div class="text-wrapper" :style="textStyle">
-        <h1 class="masked-title">LUCCA NUNES</h1>    
+        <!-- Desktop SVG Implementation -->
+        <svg class="text-svg desktop-only" viewBox="0 0 1000 300" preserveAspectRatio="xMidYMid meet">
+            <defs>
+                <mask id="video-mask" maskUnits="userSpaceOnUse">
+                    <rect x="0" y="0" width="1000" height="300" fill="black" />
+                    <text x="500" y="150" text-anchor="middle" dominant-baseline="middle" fill="white" font-family="Anton" font-weight="bold" font-size="200" dy=".1em">LUCCA NUNES</text>
+                </mask>
+            </defs>
+            <foreignObject x="0" y="0" width="1000" height="300" mask="url(#video-mask)">
+                 <video 
+                    class="in-text-video" 
+                    autoplay 
+                    muted 
+                    loop 
+                    playsinline
+                    webkit-playsinline
+                    crossorigin="anonymous"
+                    src="/carsmov.mp4">
+                 </video>
+            </foreignObject>
+        </svg>
+
+        <!-- Mobile CSS Implementation (Stencil) -->
+        <div class="mobile-stencil-container">
+            <video 
+                class="mobile-video" 
+                autoplay 
+                muted 
+                loop 
+                playsinline
+                webkit-playsinline
+                crossorigin="anonymous"
+                src="/carsmov.mp4">
+            </video>
+            <div class="stencil-overlay">
+                <span>LUCCA</span>
+                <span>NUNES</span>
+            </div>
+        </div>
     </div>
     <img src="/models/lucca.png" class="profile-bg" :style="textStyle" alt="" />
   </div>
@@ -42,16 +84,23 @@ const textStyle = computed(() => {
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Anton&display=swap');
 
+.desktop-only {
+    display: block;
+}
+.mobile-stencil-container {
+    display: none;
+}
+
 .profile-bg {
     position: absolute;
-    bottom: -30vh; /* Reverted to align face with camera */
+    bottom: -30vh; 
     left: 50%;
     transform: translateX(-50%);
     height: 90vh; 
     max-width: 90vw;
     object-fit: contain;
     pointer-events: none;
-    z-index: 2; /* On top of text */
+    z-index: 2; 
 }
 
 .background-layer {
@@ -64,8 +113,8 @@ const textStyle = computed(() => {
     justify-content: center;
     align-items: flex-start;
     padding-top: 5vh;
-    z-index: 0; /* Behind canvas */
-    background-color: white; /* Start White */
+    z-index: 0; 
+    background-color: white; 
 }
 
 .text-wrapper {
@@ -77,53 +126,76 @@ const textStyle = computed(() => {
     transition: opacity 0.1s linear;
     width: 100%;
     height: 100%;
-    z-index: 1; /* Behind profile */
+    z-index: 1; 
     position: absolute;
     top: 0;
     left: 0;
+    overflow: hidden; 
+}
+/* Removed old .masked-title styles as they seem unused or legacy */
+
+.text-svg {
+    width: 100%;
+    height: auto;
 }
 
-.masked-title {
-    font-family: 'Anton', sans-serif;
-    font-size: 20vw; /* Massive responsive font */
-    margin: 0;
-    pointer-events: none;
-    text-align: center;
-    line-height: 0.8;
-    text-transform: uppercase;
-    
-    /* Photo Mask Logic */
-    color: transparent;
-    background-color: black;
-    background-image: url('/models/Lambo/IMG_0043.jpg'); /* Fallback */
-    background-size: cover;
-    background-position: center;
-    background-clip: text;
-    -webkit-background-clip: text;
-    
-    animation: bg-cycle 0.5s infinite steps(1);
-}
-
-@keyframes bg-cycle {
-    0% { background-image: url('/models/Ferrari/IMG_2223.jpg'); }
-    20% { background-image: url('/models/Lambo/IMG_0043.jpg'); }
-    40% { background-image: url('/models/Mustang blue/DSC01243.jpg'); }
-    60% { background-image: url('/models/Gallardo/IMG_6760.jpg'); }
-    80% { background-image: url('/models/Jetta/IMG_0211.jpg'); }
-    100% { background-image: url('/models/Ferrari/IMG_2223.jpg'); } 
+.in-text-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 @media (max-width: 768px) {
-    .masked-title {
-        font-size: 39vw;
+    .desktop-only {
+        display: none !important;
     }
+    
+    .mobile-stencil-container {
+        display: grid; /* Stack children */
+        place-items: center;
+        width: 100%;
+        height: auto;
+        position: relative;
+        margin-top: 15vh;
+    }
+
+    .mobile-video {
+        grid-area: 1 / 1;
+        width: 100%;
+        height: 100%;
+        max-height: 40vh; /* Increased to fit stacked text */
+        object-fit: cover;
+    }
+
+    .stencil-overlay {
+        grid-area: 1 / 1;
+        width: 101%; /* Slight overlap to prevent cracks */
+        height: 101%;
+        background-color: white; /* The "Mask" Color */
+        color: black; /* The "Hole" Color */
+        display: flex;
+        flex-direction: column; /* Stack vertically */
+        align-items: center;
+        justify-content: center;
+        font-family: 'Anton', sans-serif;
+        font-size: 35vw; /* Much larger font */
+        font-weight: bold;
+        line-height: 0.85;
+        mix-blend-mode: screen; /* Magic: White stays White, Black shows Video */
+        z-index: 2;
+    }
+
     .profile-bg {
-        bottom: -23vh; /* Lower position for mobile as requested */
+        bottom: -23vh; 
         height: 85vh;
     }
+    
     .text-wrapper {
-        justify-content: flex-start; /* Move text to top area */
-        padding-top: 9vh;
+        justify-content: flex-start; 
+        padding-top: 0; /* Remove padding as container has margin */
     }
 }
+
+
+
 </style>
