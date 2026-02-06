@@ -58,6 +58,8 @@ onUnmounted(() => {
 
 <style scoped>
 
+@import url('https://fonts.googleapis.com/css2?family=Meie+Script&display=swap');
+
 .album-modal {
   position: fixed;
   top: 0;
@@ -120,7 +122,7 @@ onUnmounted(() => {
 .nav-arrow.right { right: 0; }
 
 .album-title {
-  font-family: 'Barriecito', cursive;
+  font-family: 'Meie Script', cursive;
   color: #D4AF37; /* Gold */
   font-size: 4rem;
   text-align: center;

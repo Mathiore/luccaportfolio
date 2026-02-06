@@ -1,147 +1,413 @@
 <script setup>
-import { defineEmits } from 'vue';
+import { defineEmits, ref } from 'vue';
+import { albums } from '../../config/albums.js';
 
-const emit = defineEmits(['select-folder']);
+const emit = defineEmits(['select-folder', 'open-album']);
 
-const folders = [
-  { id: 'albums', label: 'Álbum de Fotos' },
-  { id: 'about', label: 'Sobre mim' },
-  { id: 'contact', label: 'Contato' },
-  { id: 'license', label: 'License' }
-];
+const hoverIndex = ref(null);
+const galleryWrapper = ref(null);
 
-const selectFolder = (id) => {
-  emit('select-folder', id);
+const selectAlbum = (album) => {
+  emit('open-album', album);
+};
+
+const selectLink = (id) => {
+    emit('select-folder', id);
+};
+
+const handleWheel = (e) => {
+    if (galleryWrapper.value) {
+        // Convert vertical scroll to horizontal
+        e.preventDefault();
+        galleryWrapper.value.scrollLeft += e.deltaY;
+    }
+};
+
+const scrollGallery = (direction) => {
+    if (galleryWrapper.value) {
+        const scrollAmount = window.innerWidth * 0.5;
+        const current = galleryWrapper.value.scrollLeft;
+        galleryWrapper.value.scrollTo({
+            left: direction === 'left' ? current - scrollAmount : current + scrollAmount,
+            behavior: 'smooth'
+        });
+    }
 };
 </script>
 
 <template>
-  <div class="portfolio-menu">
-    <div class="folders-container">
-      <div 
-        v-for="folder in folders" 
-        :key="folder.id" 
-        class="folder-item"
-        @click="selectFolder(folder.id)"
-      >
-        <div class="folder-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
-            <path d="M19.5 21a3 3 0 003-3v-4.5a3 3 0 00-3-3h-15a3 3 0 00-3 3V18a3 3 0 003 3h15zM1.5 10.146V6a3 3 0 013-3h5.379a2.25 2.25 0 011.59.659l2.122 2.121c.14.141.331.22.53.22H19.5a3 3 0 013 3v1.146A4.483 4.483 0 0019.5 9h-15a4.483 4.483 0 00-3 1.146z" />
-          </svg>
+  <div class="portfolio-container">
+    <!-- Header / Nav -->
+    <header class="portfolio-header">
+        <div class="logo">
+            <span class="rec-dot"></span>
+            REC
         </div>
-        <span class="folder-label">{{ folder.label }}</span>
-      </div>
+        <nav class="nav-links">
+            <a href="#" @click.prevent="selectLink('about')">SOBRE</a>
+            <a href="#" @click.prevent="selectLink('contact')">CONTATO</a>
+        </nav>
+    </header>
+
+    <!-- Main Gallery (Horizontal Scroll) -->
+    <div class="gallery-container-relative">
+        <button class="nav-arrow left desktop-only" @click="scrollGallery('left')">‹</button>
+        
+        <div 
+            class="gallery-wrapper" 
+            ref="galleryWrapper"
+            @wheel="handleWheel"
+        >
+            <div class="gallery-track">
+                <div 
+                    v-for="(album, index) in albums" 
+                    :key="album.id" 
+                    class="album-card"
+                    @mouseenter="hoverIndex = index"
+                    @mouseleave="hoverIndex = null"
+                    @click="selectAlbum(album)"
+                >
+                    <div class="image-container">
+                        <img :src="album.cover" :alt="album.title" loading="lazy" />
+                        <div class="overlay"></div>
+                    </div>
+                    <div class="card-info">
+                        <span class="album-number">{{ (index + 1).toString().padStart(2, '0') }}</span>
+                        <h3 class="album-title">{{ album.title }}</h3>
+                        <div class="view-btn">
+                            <span>VER PROJETO</span>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <button class="nav-arrow right desktop-only" @click="scrollGallery('right')">›</button>
     </div>
 
-    <div class="profile-container">
-      <img src="/models/lucca.png" alt="Lucca" class="profile-image" />
+    <!-- Footer / Micro interaction -->
+    <div class="lens-view-indicator">
+        <div class="lens-crosshair"></div>
+        <span>LENS VIEW: ACTIVATED</span>
     </div>
   </div>
 </template>
 
 <style scoped>
-.portfolio-menu {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 40; /* Above overlay */
-  display: flex;
-  pointer-events: none; /* Let clicks pass to folders but not container if needed, but we need clicks on folders */
-  padding: 2rem;
-  box-sizing: border-box;
+@import url('https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@300;400;600&display=swap');
+
+.portfolio-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: black; /* Deep black base */
+    color: white;
+    display: flex;
+    flex-direction: column;
+    z-index: 50;
+    font-family: 'Inter', sans-serif;
+    overflow: hidden;
+    animation: fadeIn 0.8s ease-out;
 }
 
-/* Allow pointer events for children */
-.folders-container, .profile-container {
-  pointer-events: auto;
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(1.05); }
+    to { opacity: 1; transform: scale(1); }
 }
 
-/* Base Styles (Mobile Default) */
-.portfolio-menu {
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-.folders-container {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  margin-top: 15vh; /* Push down a bit */
-}
-
-.folder-item {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  cursor: pointer;
-  color: white;
-  transition: transform 0.2s ease, opacity 0.2s;
-  opacity: 0.8;
-}
-
-.folder-item:hover {
-  opacity: 1;
-  transform: translateX(10px);
-}
-
-.folder-icon {
-  width: 32px;
-  height: 32px;
-  color: #D4AF37; /* Gold accent */
-}
-
-.folder-label {
-  font-family: 'Inter', sans-serif;
-  font-size: 1.2rem;
-  font-weight: 500;
-  letter-spacing: 0.5px;
-}
-
-.profile-container {
-  align-self: center;
-  margin-bottom: 2rem;
-}
-
-.profile-image {
-  max-width: 250px;
-  height: auto;
-  filter: grayscale(100%) invert(100%); /* Invert colors: Black->White */
-  opacity: 0.9;
-  object-fit: contain;
-}
-
-/* Desktop Styles */
-@media (min-width: 768px) {
-  .portfolio-menu {
-    flex-direction: row;
-    align-items: center;
+/* HEADER */
+.portfolio-header {
+    display: flex;
     justify-content: space-between;
-    padding: 0 15vw;
-  }
+    align-items: center;
+    padding: 2rem 5vw;
+    z-index: 10;
+}
 
-  .folders-container {
-    margin-top: 0;
+.logo {
+    font-family: 'Anton', sans-serif;
+    font-size: 1rem;
+    letter-spacing: 2px;
+    display: flex;
+    align-items: center;
+    color: #ff0000;
+    animation: blink 2s infinite;
+    gap: 10px;
+}
+
+.rec-dot {
+    width: 12px;
+    height: 12px;
+    background-color: #ff0000;
+    border-radius: 50%;
+    display: inline-block;
+    animation: blink 2s infinite;
+    box-shadow: 0 0 5px #ff0000;
+}
+
+@keyframes blink {
+    0% { opacity: 1; }
+    50% { opacity: 0; }
+    100% { opacity: 1; }
+}
+
+.nav-links {
+    display: flex;
     gap: 2rem;
-  }
+}
 
-  .folder-label {
-    font-size: 1.5rem;
-  }
+.nav-links a {
+    color: rgba(255,255,255,0.6);
+    text-decoration: none;
+    font-size: 0.9rem;
+    letter-spacing: 1px;
+    font-weight: 600;
+    transition: color 0.3s;
+}
 
-  .folder-icon {
-    width: 40px;
-    height: 40px;
-  }
+.nav-links a:hover {
+    color: white;
+}
 
-  .profile-container {
-    align-self: center;
-    margin-bottom: 0;
-  }
-  
-  .profile-image {
-    max-width: 350px;
-  }
+/* GALLERY */
+.gallery-container-relative {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    overflow: hidden; /* Arrows float in, wrapper handles scroll */
+}
+
+.gallery-wrapper {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-left: 5vw; 
+    padding-right: 5vw;
+    scrollbar-width: none; 
+    -ms-overflow-style: none;
+    cursor: grab;
+    scroll-behavior: auto; /* Manual smooth scroll handling or CSS smooth */
+    mask-image: linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%);
+}
+
+/* Nav Arrows Styles */
+.nav-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 3rem;
+    cursor: pointer;
+    z-index: 20;
+    padding: 20px;
+    opacity: 0.5;
+    transition: opacity 0.3s, transform 0.3s;
+    font-family: 'Inter', sans-serif;
+    font-weight: 300;
+}
+
+.nav-arrow:hover {
+    opacity: 1;
+    transform: translateY(-50%) scale(1.2);
+    color: #D4AF37;
+}
+
+.nav-arrow.left { left: 1vw; }
+.nav-arrow.right { right: 1vw; }
+
+.gallery-wrapper::-webkit-scrollbar {
+    display: none;
+}
+
+.gallery-track {
+    display: flex;
+    gap: 1.5rem;
+    padding: 2rem 0; /* Vertical breathing room */
+}
+
+.album-card {
+    position: relative;
+    flex: 0 0 300px; /* Base width */
+    height: 45vh; /* Responsive height */
+    border-radius: 4px; /* Slight roundness */
+    overflow: hidden;
+    cursor: pointer;
+    transition:  transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), flex-basis 0.4s;
+    background-color: #111;
+    group: card;
+}
+
+.album-card:hover {
+    transform: translateY(-10px);
+    z-index: 5;
+}
+
+/* Image styling */
+.image-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.image-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.6s ease;
+    filter: grayscale(100%) contrast(1.2);
+}
+
+.album-card:hover .image-container img {
+    transform: scale(1.1);
+    filter: grayscale(0%) contrast(1);
+}
+
+.overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.2) 50%, transparent 100%);
+    opacity: 0.8;
+}
+
+/* Text Info */
+.card-info {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 1.5rem;
+    transform: translateY(10px);
+    transition: transform 0.4s ease;
+}
+
+.album-card:hover .card-info {
+    transform: translateY(0);
+}
+
+.album-number {
+    font-size: 0.8rem;
+    color: #D4AF37; /* Gold accent */
+    font-weight: bold;
+    display: block;
+    margin-bottom: 0.5rem;
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: all 0.3s ease 0.1s;
+}
+
+.album-card:hover .album-number {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.album-title {
+    font-family: 'Anton', sans-serif;
+    font-size: 2rem;
+    margin: 0 0 0.5rem 0;
+    text-transform: uppercase;
+    line-height: 0.9;
+    color: white;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+}
+
+.view-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: white;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.album-card:hover .view-btn {
+    opacity: 1;
+}
+
+/* Footer / Micro interactions */
+.lens-view-indicator {
+    position: absolute;
+    bottom: 2rem;
+    right: 3rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    opacity: 0.5;
+    font-family: 'Courier New', monospace;
+    font-size: 0.7rem;
+    color: #D4AF37;
+    pointer-events: none;
+}
+
+.lens-crosshair {
+    width: 20px;
+    height: 20px;
+    border: 1px solid #D4AF37;
+    border-radius: 50%;
+    position: relative;
+}
+
+.lens-crosshair::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 2px;
+    height: 2px;
+    background: #D4AF37;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .portfolio-header {
+        padding: 1.5rem;
+    }
+    
+    .gallery-track {
+        flex-direction: column; /* Stack vertically on mobile? Or Horizontal? Horizontal is better for gallery feel */
+        flex-direction: row; 
+    }
+    
+    .album-card {
+        flex: 0 0 75vw; /* Large width on mobile */
+        height: 55vh;
+        scroll-snap-align: center;
+    }
+    
+    .gallery-wrapper {
+        scroll-snap-type: x mandatory;
+        padding-left: 12.5vw; /* Center the first item (100 - 75) / 2 */
+        padding-right: 12.5vw;
+        mask-image: none; /* Remove fade mask on mobile specifically if performance needs */
+    }
+    
+    .image-container img {
+        filter: grayscale(0%); /* Always color on mobile */
+    }
+    
+    .album-number, .view-btn {
+        opacity: 1; /* Always visible info on mobile */
+        transform: none;
+    }
+    
+    .card-info {
+        transform: none;
+    }
 }
 </style>

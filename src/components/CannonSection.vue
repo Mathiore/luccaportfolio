@@ -319,11 +319,17 @@ const onTouchEnd = (e) => {
 };
 const handleFolderSelection = (id) => {
     if (id === 'albums') {
-        // Open first album or a dashboard - using first album as placeholder
+        // Fallback or legacy, though current menu doesn't emit this anymore for albums
         selectedAlbum.value = albums[0];
-        showAlbum.value = true; // Still use this modal for now
+        showAlbum.value = true; 
     }
     // Handle others (about, contact, license)
+    console.log("Selected folder:", id);
+};
+
+const handleAlbumOpen = (album) => {
+    selectedAlbum.value = album;
+    showAlbum.value = true;
 };
 
 const onResize = () => {
@@ -379,7 +385,7 @@ onBeforeUnmount(() => {
     <div ref="stickyWrapperRef" class="sticky-wrapper">
         <BackgroundLayer :scroll-progress="currentScrollP" :is-loading="isLoading" />
         <canvas ref="canvasRef" class="webgl-canvas"></canvas>
-        <PortfolioMenu v-if="isMenuVisible" @select-folder="handleFolderSelection" />
+        <PortfolioMenu v-if="isMenuVisible" @select-folder="handleFolderSelection" @open-album="handleAlbumOpen" />
         <CameraOverlay :scroll-progress="currentScrollP" />
     </div>
   </section>
